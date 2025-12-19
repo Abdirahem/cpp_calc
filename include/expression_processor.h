@@ -1,12 +1,12 @@
-#ifndef RESULT_PROCESSOR_H
-#define RESULT_PROCESSOR_H
+#ifndef EXPRESSION_PROCESSOR_H
+#define EXPRESSION_PROCESSOR_H
 
 #include <vector>
 #include <string>
 #include <stdexcept>
-#include "calculator.h"
-#include "OutputFormatter.h"
-#include "ExpressionCategorizer.h"
+#include "evaluator.h"
+#include "formatter.h"
+#include "categorizer.h"
 
 struct CategoryResults {
     std::vector<std::string> basicCalc;
@@ -15,32 +15,38 @@ struct CategoryResults {
     std::vector<std::string> advanced;
 };
 
-class ResultProcessor {
+class ExpressionProcessor {
 public:
     // Process a list of expressions and return categorized results
     static CategoryResults processExpressions(
         const std::vector<std::string>& expressions,
-        Calculator& calc) {
+        Evaluator& evaluator) {
         
         CategoryResults results;
         
         for (const auto& expression : expressions) {
             try {
-                // Evaluate the expression
-                double result = calc.evaluate(expression);
+                // Evaluate the expression (even if it's a variable assignment)
+                double result = evaluator.evaluate(expression);
+                
+                // Skip display of pure variable assignments (e.g., "x = 10")
+                // Only show variable usage (e.g., "x + y")
+                if (Categorizer::isVariableAssignment(expression)) {
+                    continue;
+                }
                 
                 // Format the result
-                bool hasDecimal = OutputFormatter::hasDecimalPoint(expression);
-                std::string output = OutputFormatter::formatResult(expression, result, hasDecimal);
+                bool hasDecimal = Formatter::hasDecimalPoint(expression);
+                std::string output = Formatter::formatResult(expression, result, hasDecimal);
                 
                 // Categorize and store
-                ExpressionCategorizer::Category cat = ExpressionCategorizer::categorize(expression);
+                Categorizer::Category cat = Categorizer::categorize(expression);
                 addToCategory(results, cat, output);
                 
             } catch (const std::exception& e) {
                 // Handle errors
                 std::string errorOutput = expression + " => Error: " + e.what();
-                ExpressionCategorizer::Category cat = ExpressionCategorizer::categorize(expression);
+                Categorizer::Category cat = Categorizer::categorize(expression);
                 addToCategory(results, cat, errorOutput);
             }
         }
@@ -51,23 +57,23 @@ public:
 private:
     // Helper method to add result to appropriate category
     static void addToCategory(CategoryResults& results, 
-                             ExpressionCategorizer::Category cat,
+                             Categorizer::Category cat,
                              const std::string& output) {
         switch (cat) {
-            case ExpressionCategorizer::BASIC_CALC:
+            case Categorizer::BASIC_CALC:
                 results.basicCalc.push_back(output);
                 break;
-            case ExpressionCategorizer::HEX_BINARY:
+            case Categorizer::HEX_BINARY:
                 results.hexBinary.push_back(output);
                 break;
-            case ExpressionCategorizer::VARIABLES:
+            case Categorizer::VARIABLES:
                 results.variables.push_back(output);
                 break;
-            case ExpressionCategorizer::ADVANCED:
+            case Categorizer::ADVANCED:
                 results.advanced.push_back(output);
                 break;
         }
     }
 };
 
-#endif // RESULT_PROCESSOR_H
+#endif // EXPRESSION_PROCESSOR_H

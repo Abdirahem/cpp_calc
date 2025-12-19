@@ -1,8 +1,8 @@
 #include <iostream>
 #include <iomanip>
-#include "SessionCounter.h"
-#include "OutputFormatter.h"
-#include "calculator.h"
+#include "include/session_parser.h"
+#include "include/formatter.h"
+#include "include/evaluator.h"
 
 int main(int argc, char* argv[]) {
     try {
@@ -17,24 +17,28 @@ int main(int argc, char* argv[]) {
     std::cout << "function := \"sin\" | \"cos\"" << std::endl << std::endl;
 
         // Parse sessions
-        std::vector<Session> sessions = SessionCounter::parseSessions(filename);
+        std::vector<Session> sessions = SessionParser::parseSessions(filename);
 
         // Print basic summary
-        std::cout << SessionCounter::getSummary(sessions);
+        std::cout << SessionParser::getSummary(sessions);
 
         // Evaluate sessions: a session is "correct" if all its variables and expressions evaluate without error
         int correctSessions = 0;
         std::vector<std::string> sessionReports;
 
         for (const auto& session : sessions) {
-            Calculator calc; // fresh calculator per session so variables don't leak between sessions
+            // Build lists of formatted outputs for variables and expressions
+            std::vector<std::string> varLines = session.variables;  // Store raw variable defs
+            std::vector<std::string> exprLines;  // Store formatted expression results
+            
+            Evaluator evaluator; // fresh evaluator per session so variables don't leak between sessions
             bool sessionOK = true;
             std::string report;
 
             // First, evaluate variable definitions (they may set state)
             for (const auto& varLine : session.variables) {
                 try {
-                    calc.evaluate(varLine);
+                    evaluator.evaluate(varLine);
                 } catch (const std::exception& e) {
                     sessionOK = false;
                     report += "Variable error in session " + std::to_string(session.sessionNumber) + ": '" + varLine + "' -> " + e.what() + "\n";
@@ -46,32 +50,16 @@ int main(int argc, char* argv[]) {
             if (sessionOK) {
                 for (const auto& expr : session.expressions) {
                     try {
-                        (void)calc.evaluate(expr);
+                        double val = evaluator.evaluate(expr);
+                        bool hasDecimal = Formatter::hasDecimalPoint(expr);
+                        std::string out = Formatter::formatResult(expr, val, hasDecimal);
+                        exprLines.push_back(out);
                     } catch (const std::exception& e) {
                         sessionOK = false;
+                        exprLines.push_back(expr + " => Error: " + std::string(e.what()));
                         report += "Expression error in session " + std::to_string(session.sessionNumber) + ": '" + expr + "' -> " + e.what() + "\n";
                         break;
                     }
-                }
-            }
-
-            // Build a printable session block: header, variable defs, then expression(s) with results/errors
-            std::string sessionBlock;
-            sessionBlock += "----\n";
-            // Append variable definitions
-            for (const auto& v : session.variables) {
-                sessionBlock += v + "\n";
-            }
-
-            // Evaluate expressions again to capture formatted outputs (if they succeeded earlier)
-            for (const auto& expr : session.expressions) {
-                try {
-                    double val = calc.evaluate(expr);
-                    bool hasDecimal = OutputFormatter::hasDecimalPoint(expr);
-                    std::string out = OutputFormatter::formatResult(expr, val, hasDecimal);
-                    sessionBlock += out + "\n";
-                } catch (const std::exception& e) {
-                    sessionBlock += expr + " => Error: " + std::string(e.what()) + "\n";
                 }
             }
 
@@ -80,10 +68,27 @@ int main(int argc, char* argv[]) {
                 report = "Session " + std::to_string(session.sessionNumber) + " : OK\n";
             }
 
-            // Store report and block (report contains OK/errors summary)
+            // Store report (report contains OK/errors summary)
             sessionReports.push_back(report);
-            // Print the session block to stdout as part of the analyzer output
-            std::cout << sessionBlock << std::endl;
+            
+            // Print the session block using structured format
+            std::cout << "----" << std::endl;
+            std::cout << "Session " << session.sessionNumber << std::endl;
+            
+            if (!varLines.empty()) {
+                std::cout << "Variables:" << std::endl;
+                for (const auto& v : varLines) {
+                    std::cout << "  " << v << std::endl;
+                }
+            }
+            
+            if (!exprLines.empty()) {
+                std::cout << "Expression:" << std::endl;
+                for (const auto& e : exprLines) {
+                    std::cout << "  " << e << std::endl;
+                }
+            }
+            std::cout << std::endl;
         }
 
         // Print evaluation summary

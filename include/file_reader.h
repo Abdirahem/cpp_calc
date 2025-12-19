@@ -1,12 +1,12 @@
-#ifndef INPUT_READER_H
-#define INPUT_READER_H
+#ifndef FILE_READER_H
+#define FILE_READER_H
 
 #include <fstream>
 #include <vector>
 #include <string>
 #include <stdexcept>
 
-class InputReader {
+class FileReader {
 public:
     // Read all expressions from input file
     static std::vector<std::string> readExpressions(const std::string& filename) {
@@ -45,4 +45,4 @@ private:
     }
 };
 
-#endif // INPUT_READER_H
+#endif // FILE_READER_H

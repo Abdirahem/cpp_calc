@@ -1,10 +1,10 @@
-#ifndef CALCULATOR_H
-#define CALCULATOR_H
+#ifndef EVALUATOR_H
+#define EVALUATOR_H
 
 #include <string>
 #include "Parser.h"
 
-class Calculator {
+class Evaluator {
 public:
     double evaluate(const std::string& expression);
 

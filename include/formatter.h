@@ -1,25 +1,28 @@
-#ifndef OUTPUT_FORMATTER_H
-#define OUTPUT_FORMATTER_H
+#ifndef FORMATTER_H
+#define FORMATTER_H
 
 #include <string>
 #include <iomanip>
 #include <sstream>
 
-class OutputFormatter {
+class Formatter {
 public:
     // Format a result based on whether it's an integer or decimal
     static std::string formatResult(const std::string& expression, double result, bool hasDecimal) {
         long long intVal = static_cast<long long>(result);
         
-        // If result is close to integer and input has no decimal, show as integer
+        // Format the result value
+        std::string resultStr;
         if (std::abs(result - intVal) < 1e-9 && !hasDecimal) {
-            return expression + " = " + std::to_string(intVal);
+            resultStr = std::to_string(intVal);
+        } else {
+            std::ostringstream ss;
+            ss << std::fixed << std::setprecision(2) << result;
+            resultStr = ss.str();
         }
         
-        // Otherwise show with 2 decimal places
-        std::ostringstream ss;
-        ss << std::fixed << std::setprecision(2) << result;
-        return expression + " = " + ss.str();
+        // Return expression = result on single line
+        return expression + " = " + resultStr;
     }
     
     // Check if expression contains a decimal point
@@ -28,4 +31,4 @@ public:
     }
 };
 
-#endif // OUTPUT_FORMATTER_H
+#endif // FORMATTER_H
